@@ -1,0 +1,18 @@
+file name is : LZ-调节2hz_20160601_110006_ASIC_EEG.xlsx
+precision is : 0.948275862069
+file name is : lz-调节2Hz_20160603_103047_ASIC_EEG.xlsx
+precision is : 0.87074829932
+file name is : lz-调节2hz_20160607_102336_ASIC_EEG.xlsx
+precision is : 0.815950920245
+file name is : lz-调节2hz_20160612_100247_ASIC_EEG.xlsx
+precision is : 0.844827586207
+file name is : lz-调节2hz_20160615_101728_ASIC_EEG.xlsx
+precision is : 0.95652173913
+file name is : lz-调节2hz_20160620_095729_ASIC_EEG.xlsx
+precision is : 0.887700534759
+file name is : lz-调节2hz_20161027_104924_ASIC_EEG.xlsx
+precision is : 0.589285714286
+file name is : lz-调节2hz_20161031_163934_ASIC_EEG.xlsx
+precision is : 0.715384615385
+
+avg_prediction is : 0.828586908925

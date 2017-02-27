@@ -1,0 +1,8 @@
+file name is : hyy-调节2hz_20160612_102329_ASIC_EEG.xlsx
+precision is : 0.494252873563
+file name is : hyy-调节2hz_20160704_111010_ASIC_EEG.xlsx
+precision is : 0.547872340426
+file name is : hyy-调节2hz_20160707_110702_ASIC_EEG.xlsx
+precision is : 0.558139534884
+
+avg_prediction is : 0.533421582957

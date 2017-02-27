@@ -1,0 +1,14 @@
+file name is : cxq-调节2hz_20161026_101134_ASIC_EEG.xlsx
+precision is : 0.38036809816
+file name is : cxq-调节2hz_20161102_104323_ASIC_EEG.xlsx
+precision is : 0.458598726115
+file name is : cxq下午1hz_20160602_160334_ASIC_EEG.xlsx
+precision is : 0.464788732394
+file name is : cxq早上2hz_20160601_103622_ASIC_EEG.xlsx
+precision is : 0.388535031847
+file name is : cxq早上2hz_20160728_111220_ASIC_EEG.xlsx
+precision is : 0.553333333333
+file name is : cxq早上2hz延长_20160908_105211_ASIC_EEG.xlsx
+precision is : 0.527156549521
+
+avg_prediction is : 0.462130078562

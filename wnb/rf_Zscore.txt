@@ -1,0 +1,16 @@
+file name is : wnb-201608281115_20160829_111545_ASIC_EEG.xlsx
+precision is : 0.593333333333
+file name is : wnb-调节2hz_20160816_101823_ASIC_EEG.xlsx
+precision is : 0.874251497006
+file name is : wnb-调节2hz_20160826_105045_ASIC_EEG.xlsx
+precision is : 0.917647058824
+file name is : wnb-调节2hz_20161008_105710_ASIC_EEG.xlsx
+precision is : 0.794444444444
+file name is : wnb-调节2hz_20161020_102728_ASIC_EEG.xlsx
+precision is : 0.755
+file name is : wnb-调节2hz_20161101_102759_ASIC_EEG.xlsx
+precision is : 0.968586387435
+file name is : wnb调节2hz_20160923_103643_ASIC_EEG.xlsx
+precision is : 0.929577464789
+
+avg_prediction is : 0.83326288369

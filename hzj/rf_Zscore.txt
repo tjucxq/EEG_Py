@@ -1,0 +1,10 @@
+file name is : hzj-调节2hz_20160903_113852_ASIC_EEG.xlsx
+precision is : 0.53807106599
+file name is : hzj-调节2hz_20161019_101643_ASIC_EEG.xlsx
+precision is : 0.441340782123
+file name is : hzj-调节2hz_20161021_154217_ASIC_EEG.xlsx
+precision is : 0.774566473988
+file name is : hzj-调节2hz_20161025_162241_ASIC_EEG.xlsx
+precision is : 0.901960784314
+
+avg_prediction is : 0.663984776604
