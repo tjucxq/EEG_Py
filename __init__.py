@@ -40,13 +40,15 @@ freq = [2.5, 6, 9, 11.5, 15.5, 24.5, 36, 46]
 width=[3, 4, 2, 3, 5, 13, 10, 10]
 k = 1.5
 
+half_num = 0
+
 #生成特征
 def GetFeature(filename):
     global k
     trainX = []
     trainY = []
     data = xlrd.open_workbook(filename)
-    table = data.sheets()[1]
+    table = data.sheet_by_name("第一组")
 
     #tranform sheet to numpy array
     inputdata = Sheet2Array(table)
@@ -60,12 +62,6 @@ def GetFeature(filename):
     #深拷贝
     # inputdata2 = copy.deepcopy(inputdata)
 
-    #进行Z_Score变换
-    Z_Score(0, rows-1, inputdata)
-
-    # 进行数据标准化
-    # inputdata = Normalize(inputdata)
-
     a = 0
     b = 0
     for i in range(1, rows):
@@ -76,7 +72,17 @@ def GetFeature(filename):
                 b = i-1
                 break
 
+    # 进行Z_Score变换
+    # Z_Score(0, rows-1, inputdata)
+
+    # 进行数据标准化
+    # inputdata = Normalize(inputdata)
+
+    # 进行max-min标准化
+    # Max_min(0, rows-1, inputdata)
+
     x, y = StaticFeature(0, a-1, inputdata, -1) # 平静为-1， 昏睡状态为1
+    # Z_Score(0,len(x)-1,x)    # 对提取特征进行标准化
     # m, n = StaticFeature(0, a-1, inputdata2, -1)
     # for j in range(len(m)):
     #     e = m[j]
@@ -89,6 +95,7 @@ def GetFeature(filename):
     # trainX += x1
     # trainY += y1
     x, y = StaticFeature(b+1, rows-1, inputdata, 1)
+    # Z_Score(0, len(x) - 1, numpy.asarray(x))   # 对提取的特征进行标准化
     # m, n = StaticFeature(b+1, rows-1, inputdata2, 1)
     # for j in range(len(m)):
     #     e = m[j]
@@ -131,26 +138,28 @@ def StaticFeature(a,b,inputdata,label):
             avg1 = numpy.average(inputdata[index:end, i - 8])
             temp = temp + avg1 * freq[i - 13] * width[i - 13]
             temp2 = temp2 + avg1 * width[i - 13]
-            # 每种波段有5个特征
+            avg_diff = 0.0
+            for j in range(index, end-1):
+                avg_diff += numpy.abs(inputdata[j+1][i]-inputdata[j][i])
+            # 每种波段有6个特征
             li.append(avg)
             li.append(v)
             li.append(max_t)
             li.append(min_t)
             li.append(diff)
+            li.append(avg_diff/period)
         # 特征组合
-        li.append(li[0] + li[5])  # delta + theta
-        li.append(li[0] / li[10])  # delta/low_alpha
-        li.append(li[0] / li[15])  # delta/high_alpha
-        li.append(li[0] / li[20])  # delta/low_beta
-        li.append(li[0] / li[25])  # delta/high_beta
-        li.append(li[5] / li[20])  # theta/low_beta
-        li.append(li[5] / li[25])  # theta/high_beta
-        li.append(li[10] / li[20])  # low_alpha/low_beta
-        li.append(li[10] / li[25])  # low_alpha/high_beta
+        li.append(li[0] + li[6])  # delta + theta
+        li.append(li[0]/li[6])    # delta / theta
+        li.append(li[0] / li[12])  # delta/low_alpha
+        li.append(li[0] / li[18])  # delta/high_alpha
+        li.append(li[0] / li[24])  # delta/low_beta
+        li.append(li[0] / li[20])  # delta/high_beta
+        li.append(li[6] / li[24])  # theta/low_beta
+        li.append(li[6] / li[30])  # theta/high_beta
+        li.append(li[12] / li[24])  # low_alpha/low_beta
+        li.append(li[12] / li[30])  # low_alpha/high_beta
         li.append(temp / temp2)  # GF 重心频率
-        # l = len(li)
-        # for i in range(l):
-        #     li.append(math.exp(li[i]))
 
         trainX.append(li)
         trainY.append(label)
@@ -182,31 +191,43 @@ def Z_Score(a, b, inputdata):
 
 #对数据进行正则化处理
 def Normalize(inputdata):
-    X_normalized = preprocessing.normalize(inputdata, norm='l2')
-    return X_normalized
+    X_normalized = preprocessing.normalize(inputdata[:,13:21], norm='l2')
+    for i in range(len(inputdata)):
+        for j in range(13,21):
+            inputdata[i,j] = X_normalized[i][j-13]
+    return inputdata
+
+#对数据进行max-min处理
+def Max_min(a, b, inputdata):
+    for i in range(13,21):
+        l = inputdata[a:b+1, i]
+        max = numpy.max(l)
+        min = numpy.min(l)
+        for j in range(a, b+1):
+            inputdata[j, i] = (inputdata[j, i]-min)*1.0/(max - min)
 
 #训练模型
-def BuildModel(trainX,trainY):
+def BuildModel(trainX,trainY, half_num):
     #clf = SVC(C=0.8, kernel='rbf', degree=2, gamma=1.0, coef0=0.0, shrinking=True,
     #          probability=False, tol=0.0001, cache_size=200, class_weight=None, verbose=False,
     #          max_iter=-1, decision_function_shape=None, random_state=None)
-    clf = RandomForestClassifier(n_estimators = 500, criterion = 'gini', max_depth = 30,
+    clf1 = RandomForestClassifier(n_estimators = 500, criterion = 'gini', max_depth = 30,
                                 min_samples_split = 10, min_samples_leaf = 1, min_weight_fraction_leaf = 0.0,
                                 max_features = 0.8, max_leaf_nodes = None, bootstrap = True, oob_score = False,
-                                n_jobs = 4, random_state = None, verbose = 0, warm_start = False, class_weight = None)
+                                n_jobs = 12, random_state = None, verbose = 0, warm_start = False, class_weight = None)
     # clf = DecisionTreeClassifier(criterion='gini', splitter='best', max_depth=3, min_samples_split=20, min_samples_leaf=2,
     #                              min_weight_fraction_leaf=0.0, max_features=0.8, random_state=None, max_leaf_nodes=None,
     #                              class_weight=None, presort=False)
-    # clf = GradientBoostingClassifier(loss='exponential', learning_rate=0.1, n_estimators=300, subsample=0.8,
+    # clf2 = GradientBoostingClassifier(loss='exponential', learning_rate=0.1, n_estimators=300, subsample=0.8,
     #                                  min_samples_split=2, min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_depth=5,
     #                                  init=None, random_state=None, max_features=0.7, verbose=0, max_leaf_nodes=None,
     #                                  warm_start=False, presort='auto')
-    # clf = GradientBoostingRegressor(loss='ls', learning_rate=0.1, n_estimators=300, subsample=0.8, min_samples_split=2,
-    #                                 min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_depth=6, init=None,
-    #                                 random_state=None, max_features=0.8, alpha=0.45, verbose=0, max_leaf_nodes=None,
-    #                                 warm_start=False, presort='auto')
-    # clf = SVR(kernel='rbf', degree=3, gamma='auto', coef0=0.0, tol=0.001, C=1.5, epsilon=0.2, shrinking=True, cache_size=200,
-    #     verbose=False, max_iter=3000)
+    clf2 = GradientBoostingRegressor(loss='ls', learning_rate=0.1, n_estimators=300, subsample=0.8, min_samples_split=2,
+                                    min_samples_leaf=1, min_weight_fraction_leaf=0.0, max_depth=6, init=None,
+                                    random_state=None, max_features=0.8, alpha=0.45, verbose=0, max_leaf_nodes=None,
+                                    warm_start=False, presort='auto')
+    clf3 = SVR(kernel='rbf', degree=3, gamma='auto', coef0=0.0, tol=0.001, C=1.5, epsilon=0.2, shrinking=True, cache_size=200,
+        verbose=False, max_iter=3000)
     #
     # clf = LogisticRegression(penalty='l2', dual=False, tol=0.0005, C=1.5, fit_intercept=True,intercept_scaling=1,
     #                          class_weight=None, random_state=None, solver='liblinear',max_iter=1000, multi_class='ovr',
@@ -228,13 +249,76 @@ def BuildModel(trainX,trainY):
     # print "x_test len is " + str(len(X_test))
 
     print "train is beginning"
+    clf1.fit(trainX,trainY)
+    # clf2.fit(trainX,trainY)
+    # clf3.fit(trainX,trainY)
 
-    clf.fit(trainX,trainY)
+    #模型融合策略
+    # ml_lst = []
+    # ml_lst.append(clf1)
+    # ml_lst.append(clf2)
+    # ml_lst.append(clf3)
+    # res = Ensemble_Train(ml_lst, trainX, trainY, half_num)
+
     print "train is done"
 
-    # predictY = clf.predict(X_test)
+    return [clf1, clf2, clf3]
+    # return res
 
-    return clf
+def Ensemble_Train(ml_lst,trainX,trainY,half_num):
+    print "train is beginning"
+    clf1 = ml_lst[0]
+    clf2 = ml_lst[1]
+    clf3 = ml_lst[2]
+    clf1.fit(trainX[:len(trainX)/2], trainY[:len(trainX)/2])
+    clf2.fit(trainX[:len(trainX)/2], trainY[:len(trainX)/2])
+    clf3.fit(trainX[:len(trainX)/2], trainY[:len(trainX)/2])
+    print "train is done"
+
+    sec_trainX = []
+    sec_trainY = trainY[len(trainX)/2:]
+    for i in range(len(ml_lst)):
+        clf = ml_lst[i]
+        # if i < 2:
+        #     yy = clf.predict_proba(trainX[len(trainX)/2:])
+        # else:
+        #     yy = clf.predict(trainX[len(trainX)/2:])
+        yy = clf.predict(trainX[len(trainX) / 2:])
+        if i == 0:
+            for j in range(len(yy)):
+                sec_trainX.append([])
+                sec_trainX[j].append(yy[j])
+            continue
+        for j in range(len(yy)):
+            sec_trainX[j].append(yy[j])
+
+    ensemble_clf = LogisticRegression(penalty='l2', dual=False, tol=0.0005, C=1.5, fit_intercept=True, intercept_scaling=1,
+                             class_weight=None, random_state=None, solver='liblinear',max_iter=100, multi_class='ovr',
+                             verbose=0, warm_start=False, n_jobs=4)
+    print sec_trainX
+    print numpy.asarray(sec_trainX)
+    ensemble_clf.fit(numpy.asarray(sec_trainX),sec_trainY)
+    ml_lst.append(ensemble_clf)
+    return ml_lst
+
+def Ensemble_Test(ml_lst,testX):
+    sec_testX = []
+    for i in range(len(ml_lst)-1):
+        clf = ml_lst[i]
+        # if i < 2:
+        #     predictY = clf.predict_proba(testX)
+        # else:
+        #     predictY = clf.predict(testX)
+        predictY = clf.predict(testX)
+        if i == 0:
+            for j in range(len(predictY)):
+                sec_testX.append([])
+                sec_testX[j].append(predictY[j])
+            continue
+        for j in range(len(predictY)):
+            sec_testX[j].append(predictY[j])
+    predictY = ml_lst[-1].predict(sec_testX)
+    return predictY
 
 #保存特征文件
 def dumpFeature(trainX,trainY):
@@ -260,31 +344,20 @@ def LoadTrainData():
         trainY += y
     return trainX,trainY
 
-def DataPreprocess(trainX, trainY, k):
-    tt = []
-    for lst in trainX:
-        tt.append(lst[0])
-    avg_delta = numpy.average(tt)
-    std_delta = numpy.std(tt)
-    X = []
-    Y = []
-    for i in range(len(trainX)):
-        lst = trainX[i]
-        if lst[0] >= avg_delta - k*std_delta and lst[0] <= avg_delta + k*std_delta:
-            X.append(lst)
-            Y.append(trainY[i])
-    print "k is : "+str(k)
-    print "Size before processing is : "+str(len(trainX)) + " Size after processing is : "+str(len(X)) + \
-          " Confidence level is : "+str(round(len(X)*1.0/len(trainX),2))
-    return X, Y
 
 def CrossValidation(path):
+    global half_num
+    model_name = ["rf.model", "gbrt.model", "svm.model"]
     path = path.encode("gbk")
     files = os.listdir(path)
 
-    out = file(path+"rf_Zscore_1222.txt","w")
+    out1 = file(path+"rf_0405.txt","w")
+    # out2 = file(path+"gbrt_0405.txt","w")
+    # out3 = file(path+"svm_0405.txt","w")
+    # out = [out1, out2, out3]
+    out = [out1]
     a = 0
-    avg_prediction = 0.0
+    avg_prediction = [0.0, 0.0, 0.0]
     size = 0
     while a < len(files):
         trainX = []
@@ -315,26 +388,54 @@ def CrossValidation(path):
             trainX += x
             trainY += y
             j += 1
-        # pca = PCA()
+            # 判断一半的数据集
+            if size == 15:
+                half_num = len(trainY)
+
+            # pca = PCA()
         # trainX, testX = pca.process(trainX, testX)
         print len(trainX)
         print "file name is : "+valiName.decode("gbk").encode("utf-8")
-        out.write("file name is : "+valiName.decode("gbk").encode("utf-8")+"\n")
-        clf = BuildModel(trainX, trainY)
-        predictY = clf.predict(testX)
-        # 判断准确率
-        right = 0
-        for i in range(len(predictY)):
-            if testY[i] == 1 and predictY[i] > 0:
-                right += 1
-            if testY[i] == -1 and predictY[i] <= 0:
-                right += 1
-        avg_prediction += right * 1.0 / len(predictY)
-        print "precision is : " + str(right * 1.0 / len(predictY))
-        out.write("precision is : " + str(right * 1.0 / len(predictY))+"\n")
+
+        clf = BuildModel(trainX, trainY, half_num)
+
+        #三个模型
+        for m in range(len(out)):
+            out[m].write("file name is : " + valiName.decode("gbk").encode("utf-8") + "\n")
+            #单模型
+            predictY = clf[m].predict(testX)
+            #多模型融合
+            # predictY = Ensemble_Test(clf,testX)
+            # 判断准确率
+            TP = 0
+            TN = 0
+            Positive = 0
+            Negative = 0
+            for i in range(len(predictY)):
+                if testY[i] == 1:
+                    Positive += 1
+                    if predictY[i] > 0.5:
+                        TP += 1
+                else:
+                    Negative += 1
+                    if predictY[i] <= 0.5:
+                        TN += 1
+            right = TP +TN
+            avg_prediction[m] += right * 1.0 / len(predictY)
+            print model_name[m] + " precision is : " + str(right * 1.0 / len(predictY))
+            out[m].write("TP is : "+str(TP)+" TN is : "+str(TN)+" Positive is : "+str(Positive)+" Negative is : "+str(Negative)+" precision is : " + str(right * 1.0 / len(predictY))+"\n")
         a += 1
-    out.write("\navg_prediction is : "+str(avg_prediction/size))
-    out.close()
+
+    for i in range(len(out)):
+        out[i].write("\navg_prediction is : "+str(avg_prediction[i]/size)+ " size is : "+str(size))
+        out[i].close()
+
+        path += "model/"
+        isExists = os.path.exists(path)
+        if not isExists:
+            os.makedirs(path)
+        joblib.dump(clf[i], path + model_name[i])
+
     return trainX, trainY
 
 def Train(path):
@@ -361,10 +462,11 @@ def Train(path):
         os.makedirs(path)
     joblib.dump(clf, path+"rf.model")
 
-def Test(path):
+def Test(path,path2):
     path = path.encode("gbk")
-    clf = joblib.load(path+"model/rf.model")
-    path += "new_add/"
+    path2 = path2.encode("gbk")
+    clf = joblib.load(path2+"model/rf.model")
+    # path += "new_add/"
     files = os.listdir(path)
     a = 0
     avg_prediction = 0.0
@@ -430,22 +532,25 @@ def LoadTestData():
 if __name__ == "__main__":
 
     # lst = [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0]
-    lst = [1.2, 1.3, 1.4, 1.5, 1.6]
+    lst = [1.3, 1.4, 1.5, 1.6, 1.7]
+    # lst = [1.3]
     # lst = ["cxq", "hyy", "hzj", "lz", "wnb"]
     # lst = ["lz"]
     # GetFeature("./cxq-调节2hz_20161102_104323_ASIC_EEG.xlsx".decode("utf-8").encode("gbk"))
 
     for ele in lst:
-        # path = "E:/计算所/EEG/Matlab Code/EEG_repository/EEG/Data/全部数据/原始excel/"
+        # path = "E:/计算所/EEG/Matlab Code/EEG_repository/EEG/Data/全部数据/原始excel/调节6Hz(K=1~2)/"
         path = "E:/计算所/EEG/Matlab Code/EEG_repository/EEG/Data/全部数据/原始excel/理想数据k=1~2/"
+
         # path = "理想数据/"
         # path = "./"
         path += "k="+str(ele)+"/"
+        # path2 += "k=" + str(ele) + "/"
         # path += ele +"/"
         CrossValidation(path)
 
-        #训练模型，保存模型
+        # 训练模型，保存模型
         # Train(path)
 
-        #用已有模型，预测新来数据
-        # Test(path)
+        # 用已有模型，预测新来数据
+        # Test(path,path2)
